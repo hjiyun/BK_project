@@ -1,0 +1,30 @@
+# 환경변수 (API 키 등 비밀 정보)
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# 데이터 (용량 크고, 저작권/개인정보 이슈)
+data/
+*.csv
+*.json
+*.xlsx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/

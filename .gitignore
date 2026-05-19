@@ -1,0 +1,30 @@
+# === 캐시 / 잡파일 ===
+__pycache__/
+*.pyc
+*.log
+
+# === 디버그 산출물 ===
+research/kbs/debug_view_*
+*.html
+*.png
+
+# === 원본·파생 데이터 (배포 제한: 공개 저장소에서 제외) ===
+# KBS 방송 스크립트, 유튜브 자막 등은 저작권상 외부 배포 제한
+*.csv
+*.parquet
+*.tsv.bak
+*.vtt
+*.jsonl
+*.xlsx
+*.json
+
+# 유튜브 원본 자막/캐시 폴더
+research/youtube/_subs_vtt/
+research/youtube/_subs_vtt_multi/
+research/youtube/_channel_manifests/
+
+# 수집된 자막 텍스트(데이터)
+*.txt
+
+# === 내부 문서(회의록·중간보고서) ===
+docs/
