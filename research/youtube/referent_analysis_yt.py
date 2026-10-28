@@ -70,8 +70,7 @@ def boot(rows, typ='국가명', B=2000):
         p, n = share([rows[int(random.random() * len(rows))] for _ in rows])
         if n:
             vals.append(p[typ])
-    vals.sort()
-    return vals
+    return vals                  # 정렬하지 않음 — 차이 CI는 독립 반복끼리 짝지어야 함
 
 
 def boot_cluster(groups, typ='국가명', B=2000):
@@ -86,11 +85,11 @@ def boot_cluster(groups, typ='국가명', B=2000):
         p, n = share(rows)
         if n:
             vals.append(p[typ])
-    vals.sort()
     return vals
 
 
 def ci(vals):
+    vals = sorted(vals)
     return vals[int(.025 * len(vals))], vals[int(.975 * len(vals))]
 
 
