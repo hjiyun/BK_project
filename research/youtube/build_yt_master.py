@@ -19,15 +19,17 @@ BASE = Path(__file__).parent
 OUT = BASE / "master"
 CHUNK_CHARS = 3500
 
-# 폴더 → (채널 표시명, 기본 재생목록명). 재생목록은 헤더 group/playlist 또는 하위 폴더명 우선.
+# 폴더 → (채널 표시명, 기본 재생목록명, 장르). 재생목록은 헤더 group/playlist 또는 하위 폴더명 우선.
+# 장르: 생활·경험형 = 탈북민 게스트 인터뷰 중심 / 정세·체제형 = 진행자의 북한 시사 해설 중심.
+#   합동 LDA(K=6·10) 채널 토픽 구성의 2군집 분할과 일치 (보고서 7.5절).
 CHANNELS = {
-    "yumi_talkbox_2024": ("유미카", "유미의 토크박스"),
-    "강철환tv": ("강철환tv", None),
-    "이철은_Lee-CherUn": ("이철은", None),
-    "주성하TV_joosungha": ("주성하TV", None),
-    "배나TV_bnatv1004": ("배나TV", None),
-    "이소연TV": ("이소연TV", None),
-    "한송이_songyi": ("한송이", None),
+    "yumi_talkbox_2024": ("유미카", "유미의 토크박스", "생활·경험형"),
+    "강철환tv": ("강철환tv", None, "정세·체제형"),
+    "이철은_Lee-CherUn": ("이철은", None, "생활·경험형"),
+    "주성하TV_joosungha": ("주성하TV", None, "정세·체제형"),
+    "배나TV_bnatv1004": ("배나TV", None, "정세·체제형"),
+    "이소연TV": ("이소연TV", None, "정세·체제형"),
+    "한송이_songyi": ("한송이", None, "생활·경험형"),
 }
 
 HEADER_RE = re.compile(r"^#\s*(\w+):\s*(.*)$")
@@ -79,7 +81,7 @@ def chunk_sents(sents, limit=CHUNK_CHARS):
 def main():
     OUT.mkdir(exist_ok=True)
     videos, sent_rows, chunk_rows = [], [], []
-    for folder, (channel, default_pl) in CHANNELS.items():
+    for folder, (channel, default_pl, genre) in CHANNELS.items():
         files = sorted(p for p in (BASE / folder).rglob("*.txt") if not p.name.startswith("_"))
         for p in files:
             meta, raw = parse_file(p)
@@ -95,10 +97,10 @@ def main():
             for j, c in enumerate(chunk_sents(sents)):
                 ct = " ".join(c)
                 chunk_rows.append({"video_id": vid, "chunk_idx": j, "channel": channel,
-                                   "year": int(ud[:4]), "text": ct, "char_len": len(ct),
+                                   "genre": genre, "year": int(ud[:4]), "text": ct, "char_len": len(ct),
                                    "token_len": token_len(ct)})
             videos.append({
-                "video_id": vid, "channel": channel, "playlist": playlist,
+                "video_id": vid, "channel": channel, "genre": genre, "playlist": playlist,
                 "year": int(ud[:4]), "upload_date": pd.to_datetime(ud, format="%Y%m%d"),
                 "title": meta["title"], "url": meta.get("url", ""),
                 "sub_lang": meta.get("sub_lang") or meta.get("sub", ""),
