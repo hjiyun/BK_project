@@ -98,6 +98,10 @@ def tables():
     T["지칭어_장르"] = pd.read_csv(YT / "genre_referent.csv")
     T["지칭어_장르차이"] = pd.read_csv(YT / "genre_referent_diff.csv")
     T["지칭어_채널"] = pd.read_csv(YT / "referent_2024_by_channel.csv")
+    T["북측지칭"] = pd.read_csv(YT / "referent_north.csv")
+    T["북측지칭_KBS인접연도"] = pd.read_csv(YT / "referent_north_kbs_diff.csv")
+    T["북측지칭_채널"] = pd.read_csv(YT / "referent_north_by_channel.csv")
+    T["북측지칭_표현빈도"] = pd.read_csv(YT / "referent_north_forms.csv").rename(columns={"Unnamed: 0": "표현"})
     T["김정은호칭"] = pd.read_csv(YT / "kim_title_kbs_yt.csv")
     T["김정은호칭_장르"] = pd.read_csv(YT / "genre_kim_title.csv")
     T["KBS탈북민인용"] = dq
@@ -347,6 +351,8 @@ def write_xlsx(T, path):
 CODEBOOK = {
     "지칭어_국가명": "남측 지칭 중 국가명(한국·대한민국) 비율. 국가명=%, lo/hi=95% 부트스트랩 CI(기사·영상 단위), N=남측 지칭 총 언급수",
     "지칭어_유형전체": "관계어(남측·남녘·남조선)/국가명/지역명(남한)/환유(청와대·용산) 점유율 %. 국가명CI=영상·기사 부트스트랩, 채널군집CI=채널 리샘플",
+    "북측지칭": "북측 지칭 유형 점유율 %: 국가명(북한)/관계어(북측·북녘·이북)/북한식자칭(북조선·공화국·조선민주주의인민공화국)/적대어(북괴). CI=기사·영상 부트스트랩",
+    "북측지칭_KBS인접연도": "KBS 인접 연도 점유율 차이(%p)와 기사 부트스트랩 95% CI, 유의=CI가 0을 포함하지 않음",
     "김정은호칭": "김정은 언급 범주: 직함(앞뒤 2토큰 내 위원장·국무위원장·총비서·원수)/동지/맨이름 %. KBS는 층1, 인용 포함·제외",
     "로그오즈비_유튜브vsKBS": "가중 로그오즈비 z(양수=유튜브 변별). per10k=1만 명사당 빈도, n_ch=같은 방향 |z|>1.96인 유튜브 채널 수(6개 중), z_<채널>=채널별 z",
     "토픽K6_라벨지표": "토픽별 라벨·UMass(토픽 상위15어)·안정성(시드 5개 매칭 코사인)·배타성(상위15어 비중복 비율)·relevance(λ=0.6)·FREX·대표 문서",
@@ -380,7 +386,7 @@ def main():
     for g in YT.glob("cooc_net_*.gexf"):
         shutil.copy(g, PKG / "05_네트워크_Gephi" / g.name)
     for src in [R / "kbs" / "referent_lexicon.yaml", R / "kbs" / "reporting_verbs.yaml",
-                R / "youtube" / "referent_lexicon_yt.yaml", R / "kiwi_user_dict.tsv",
+                R / "youtube" / "referent_lexicon_yt.yaml", R / "youtube" / "referent_lexicon_north.yaml", R / "kiwi_user_dict.tsv",
                 R / "kiwi_user_dict_v3_draft.tsv", R / "asr_normalize_v1.tsv", R / "llm_classify" / "prompt_v1.md"]:
         if src.exists():
             shutil.copy(src, PKG / "06_방법론_재현" / src.name)
@@ -453,7 +459,7 @@ REPRO = """# 재현 가이드
 | 2 | kbs/add_speaker.py → kbs/build_master.py | KBS 마스터(sections/articles) |
 | 3 | youtube/build_yt_master.py | 유튜브 마스터(videos/sentences/chunks, genre) |
 | 4 | kbs/referent_analysis.py, youtube/referent_analysis_yt.py | 남측 지칭어 |
-| 5 | youtube/kim_title_yt.py, youtube/kbs_defector_quotes.py | 김정은 호칭, KBS 탈북민 인용 |
+| 5 | youtube/kim_title_yt.py, youtube/kbs_defector_quotes.py, youtube/referent_north.py | 김정은 호칭, KBS 탈북민 인용, 북측 지칭 |
 | 6 | youtube/logodds_yt_vs_kbs.py | 매체 간 로그오즈비 |
 | 7 | kbs/topic_select_k.py·topic_model.py·topic_quarter.py | KBS 토픽(K=8) |
 | 8 | youtube/topic_project_yt.py → topic_joint_2024.py 6 / 10 → topic_joint_balanced.py → topic_select_k_joint.py → topic_label_metrics.py | 투영·합동 토픽·강건성·K 선택·라벨 |
