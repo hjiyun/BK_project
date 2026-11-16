@@ -10,6 +10,7 @@
 
 단계:
   python3 classify.py prepare          # requests.jsonl 생성 + 규모·비용 추정(API 호출 없음)
+  python3 classify.py pilot            # 6건 동기 호출로 형식·품질 사전 확인
   python3 classify.py submit           # 배치 제출 (ANTHROPIC_API_KEY 또는 ant auth 필요, 비용 발생)
   python3 classify.py collect <batch>  # 결과 수집 → labels.csv
   python3 classify.py sample           # 검수용 표본 30건(매체·연도 층화) → review_sample.csv
@@ -102,8 +103,29 @@ def prepare():
 
 
 def client():
+    """ANTHROPIC_API_KEY 환경변수 우선, 없으면 BK_project/api 파일(.gitignore 대상)에서 읽음."""
+    import os
     import anthropic
+    keyfile = RESEARCH.parent / "api"
+    if not os.environ.get("ANTHROPIC_API_KEY") and keyfile.exists():
+        return anthropic.Anthropic(api_key=keyfile.read_text().strip())
     return anthropic.Anthropic()
+
+
+def pilot(n=6):
+    """배치 전 소규모 동기 호출로 출력 형식·분류 품질 확인 (매체·연도 층화)."""
+    docs = build_docs()
+    pick = pd.concat([g.head(1) for _, g in docs.groupby(["media", "year"])] +
+                     [docs[docs.genre == "정세·체제형"].head(1)]).head(n)
+    c = client()
+    for r in pick.itertuples():
+        msg = c.messages.create(**params(r.text))
+        text = next((b.text for b in msg.content if b.type == "text"), "")
+        u = msg.usage
+        print(f"{r.doc_id} [{r.media} {r.year} {r.genre}] stop={msg.stop_reason} "
+              f"in={u.input_tokens} cache_w={u.cache_creation_input_tokens} cache_r={u.cache_read_input_tokens} out={u.output_tokens}")
+        print("   제목:", r.text.split(chr(10))[0][:80])
+        print("   →", text)
 
 
 def submit():
@@ -147,6 +169,16 @@ def sample(n=30):
     print(f"검수 표본 {len(s)}건 → review_sample.csv (허용 오분류율 10%, 8.25 회의 기준)")
 
 
+def perm_chi2(x, g, B=10000):
+    """집단 라벨을 섞어 χ² 통계량의 귀무분포를 만든 Monte Carlo p (기대빈도<5 셀 대응)."""
+    import numpy as np
+    from scipy.stats import chi2_contingency
+    rng = np.random.default_rng(42)
+    obs = chi2_contingency(pd.crosstab(x, g))[0]
+    hits = sum(chi2_contingency(pd.crosstab(x, rng.permutation(g)))[0] >= obs for _ in range(B))
+    return (hits + 1) / (B + 1)
+
+
 def report():
     from scipy.stats import chi2_contingency, fisher_exact
     lab = pd.read_csv(OUT / "labels.csv").dropna(subset=["topic"])
@@ -159,15 +191,19 @@ def report():
             note = "기대빈도<5 셀 있음 → 셀별 Fisher 병행" if (exp < 5).any() else ""
             print(f"\n[{col}] {name}: χ²={chi2:.1f} df={dof} p={p:.3g} {note}")
             print((tab / tab.sum() * 100).round(1).to_string())
+            if (exp < 5).any() and tab.shape[1] > 2:     # 다집단: 순열 χ² (Fisher 일반화 대용)
+                print(f"   순열 χ² p={perm_chi2(sub[col].values, sub['집단'].values):.4g} (10,000회)")
             if (exp < 5).any() and tab.shape[1] == 2:
                 for lvl in tab.index:          # 범주 vs 나머지 2×2 Fisher
                     t = [[tab.loc[lvl].iloc[0], tab.iloc[:, 0].sum() - tab.loc[lvl].iloc[0]],
                          [tab.loc[lvl].iloc[1], tab.iloc[:, 1].sum() - tab.loc[lvl].iloc[1]]]
                     print(f"   Fisher {lvl}: p={fisher_exact(t)[1]:.3g}")
-    print(f"\nbundle 비중(KBS): {lab[lab.media == 'KBS'].is_bundle.mean() * 100:.1f}%")
+    kb = lab[lab.media == "KBS"]
+    print(f"\nbundle 비중(KBS): {kb.is_bundle.mean() * 100:.1f}% · 연도별 "
+          + str((kb.groupby('year').is_bundle.mean() * 100).round(1).to_dict()))
 
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "prepare"
-    {"prepare": prepare, "submit": submit, "sample": sample, "report": report,
+    {"prepare": prepare, "submit": submit, "sample": sample, "report": report, "pilot": pilot,
      "collect": lambda: collect(sys.argv[2])}[cmd]()
