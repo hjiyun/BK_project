@@ -33,3 +33,6 @@ docs/
 api
 *.key
 .env
+
+# 전달 패키지(파생 데이터 포함)
+handoff/
