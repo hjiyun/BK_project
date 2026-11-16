@@ -28,3 +28,8 @@ research/youtube/_channel_manifests/
 
 # === 내부 문서(회의록·중간보고서) ===
 docs/
+
+# === 비밀키 ===
+api
+*.key
+.env
