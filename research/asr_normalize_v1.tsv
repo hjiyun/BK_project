@@ -1,0 +1,9 @@
+# 유튜브 자동자막 ASR 변이형 정규화 표 (v1 초안 — 미적용. 반영 시 build_yt_master.py 의 clean() 에서 치환)
+# 빈도는 2024 유튜브 text_clean 기준 (youtube/dict_v3_candidates.py, master/asr_variants.csv)
+# 주의: '김정운'·'최선이'는 동명이인·일반어 가능성 → 적용 전 KWIC 확인 필요
+# 형식: 변이형<TAB>정자<TAB>유튜브 빈도
+이설주	리설주	118
+김종은	김정은	74
+보이부	보위부	29
+최선이	최선희	14
+김정운	김정은	13
