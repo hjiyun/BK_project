@@ -377,7 +377,7 @@ CODEBOOK = {
 
 def main():
     if PKG.exists():
-        shutil.rmtree(PKG)
+        shutil.rmtree(PKG)        # 이 스크립트가 만든 산출물 폴더(원본 아님) — 매번 새로 생성
     for d in ["01_보고서", "03_CSV", "04_그림", "05_네트워크_Gephi", "06_방법론_재현", "07_표본목록"]:
         (PKG / d).mkdir(parents=True)
     T = tables()
@@ -394,6 +394,9 @@ def main():
     # 본 보고서: 패키지 맨 앞, 그림 내장 docx
     shutil.copy(R / "통일연구원_결과보고서.md", PKG / "00_결과보고서.md")
     md_to_docx(R / "통일연구원_결과보고서.md", PKG / "00_결과보고서.docx", base_dir=PKG)
+    import results_digest                                  # 결과표 모음 (KBS 2018·2024 / 유튜브 2024 / 비교)
+    dmd, nsheet = results_digest.main(PKG)
+    md_to_docx(dmd, dmd.with_suffix(".docx"))
     for g in YT.glob("cooc_net_*.gexf"):
         shutil.copy(g, PKG / "05_네트워크_Gephi" / g.name)
     for src in [R / "kbs" / "referent_lexicon.yaml", R / "kbs" / "reporting_verbs.yaml",
@@ -441,6 +444,7 @@ KBS 〈남북의 창〉(2018·2020·2022·2024)과 탈북민·북한 유튜브(2
 | 폴더/파일 | 내용 |
 |---|---|
 | **00_결과보고서.docx / .md** | **본 보고서** — 설계·자료·방법·결과·한계 (그림 포함, 해석 미수록) |
+| **01_결과표_KBS2018·2024_유튜브2024 (.docx·.xlsx·.md)** | **결과표 모음** — A. KBS 2018·2024, B. 유튜브 2024, C. 2024 KBS–유튜브 비교 (표 41종, 해석 미수록) |
 | 01_보고서/ | 데이터수집_보고서(md·docx) — 수집·정제·분석 전 과정, 유튜브_분석_요약(md·docx), 토픽모델링_보고서.docx |
 | 02_분석결과_통합.xlsx | 모든 결과 표 {ntab}개 시트 (첫 시트 '목차') |
 | 03_CSV/ | 같은 표의 CSV (UTF-8 BOM, 엑셀에서 바로 열림) |
