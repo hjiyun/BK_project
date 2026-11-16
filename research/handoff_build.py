@@ -105,6 +105,7 @@ def tables():
     T["김정은호칭"] = pd.read_csv(YT / "kim_title_kbs_yt.csv")
     T["김정은호칭_장르"] = pd.read_csv(YT / "genre_kim_title.csv")
     T["KBS탈북민인용"] = dq
+    T["로그오즈비_KBS인접시점"] = pd.read_csv(KB / "logodds_adjacent.csv")
     T["로그오즈비_유튜브vsKBS"] = pd.read_csv(YT / "logodds_2024_yt_vs_kbs.csv")
     T["로그오즈비_정세형vsKBS"] = pd.read_csv(YT / "genre_logodds_정세·체제형_vs_KBS.csv")
     T["로그오즈비_경험형vs정세형"] = pd.read_csv(YT / "genre_logodds_생활·경험형_vs_정세·체제형.csv")
@@ -355,6 +356,7 @@ CODEBOOK = {
     "북측지칭_KBS인접연도": "KBS 인접 연도 점유율 차이(%p)와 기사 부트스트랩 95% CI, 유의=CI가 0을 포함하지 않음",
     "김정은호칭": "김정은 언급 범주: 직함(앞뒤 2토큰 내 위원장·국무위원장·총비서·원수)/동지/맨이름 %. KBS는 층1, 인용 포함·제외",
     "로그오즈비_유튜브vsKBS": "가중 로그오즈비 z(양수=유튜브 변별). per10k=1만 명사당 빈도, n_ch=같은 방향 |z|>1.96인 유튜브 채널 수(6개 중), z_<채널>=채널별 z",
+    "로그오즈비_KBS인접시점": "KBS 인접 연도 가중 로그오즈비. z 양수=뒤 연도 변별, 버전=전체 명사/일반명사(NNG), 채택=변별 쪽 연도 기사 5건 이상",
     "토픽K6_라벨지표": "토픽별 라벨·UMass(토픽 상위15어)·안정성(시드 5개 매칭 코사인)·배타성(상위15어 비중복 비율)·relevance(λ=0.6)·FREX·대표 문서",
     "토픽_K선택": "K별 UMass(원본/균형표본 5회 평균), 안정성(시드 쌍 매칭 코사인 평균), 최저 토픽 안정성",
     "토픽_균형강건성": "유튜브를 KBS 문서 수(147)로 채널 비례 하위표본 후 재학습. KBS집중도=KBS 상위2토픽 비중합, 공유토픽=두 매체 모두 ≥5%·비율≤2, 매체분리도=Σ|차|/2",
@@ -460,7 +462,7 @@ REPRO = """# 재현 가이드
 | 3 | youtube/build_yt_master.py | 유튜브 마스터(videos/sentences/chunks, genre) |
 | 4 | kbs/referent_analysis.py, youtube/referent_analysis_yt.py | 남측 지칭어 |
 | 5 | youtube/kim_title_yt.py, youtube/kbs_defector_quotes.py, youtube/referent_north.py | 김정은 호칭, KBS 탈북민 인용, 북측 지칭 |
-| 6 | youtube/logodds_yt_vs_kbs.py | 매체 간 로그오즈비 |
+| 6 | youtube/logodds_yt_vs_kbs.py, kbs/logodds_adjacent.py | 매체 간·KBS 인접 시점 로그오즈비 |
 | 7 | kbs/topic_select_k.py·topic_model.py·topic_quarter.py | KBS 토픽(K=8) |
 | 8 | youtube/topic_project_yt.py → topic_joint_2024.py 6 / 10 → topic_joint_balanced.py → topic_select_k_joint.py → topic_label_metrics.py | 투영·합동 토픽·강건성·K 선택·라벨 |
 | 9 | youtube/genre_compare.py | 장르 층화 재산출 |
