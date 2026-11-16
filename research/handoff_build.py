@@ -26,6 +26,8 @@ R = Path(__file__).parent
 YT, KB, LLM = R / "youtube" / "master", R / "kbs" / "master", R / "llm_classify" / "out"
 TODAY = dt.date.today().strftime("%Y%m%d")
 PKG = R.parent / "handoff" / f"통일연구원_전달자료_{TODAY}"
+FIG = PKG / "02_그림"
+APX = PKG / "부록_기술자료(읽지 않으셔도 됩니다)"          # 연구 재현용 — 비전공 독자는 열 필요 없음
 
 # 차트 토큰 (dataviz 기준 팔레트, 라이트 표면 — 6슬롯 검증 통과, 대비 WARN → 값 직접 표기 + 표 제공)
 SURF, INK, INK2, MUTED, GRID, BASE = "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7"
@@ -54,8 +56,12 @@ def style(ax, grid_axis="x"):
     ax.tick_params(length=0)
 
 
+RENAME = {'fig1_남측지칭_국가명': '그림1_남한을_부르는_말', 'fig2_김정은_직함부착': '그림2_김정은_직함', 'fig3_토픽K6_구성': '그림3_2024년_주제구성', 'fig4_토픽_K선택': '그림4_주제수_결정근거', 'fig5_KBS헤지_유형': '그림5_KBS_추정전언표현', 'fig6_극성_분산_강한부정': '그림6_긍정부정_점수', 'fig8_LLM_소재분포': '그림8_AI분류_소재', 'fig9_LLM_프레임분포': '그림9_AI분류_프레임'}
+
+
 def save(fig, name):
-    p = PKG / "04_그림" / f"{name}.png"
+    name = RENAME.get(name, name.replace("fig7_연관어네트워크_", "그림7_연관어연결망_"))
+    p = FIG / f"{name}.png"
     fig.savefig(p, dpi=200, bbox_inches="tight"); plt.close(fig)
     return p
 
@@ -155,9 +161,9 @@ def fig_bar_ci(df, title, xlabel, name, note):
 
 def figures(T):
     out = []
-    out.append(fig_bar_ci(T["지칭어_국가명"], "남측 지칭 중 국가명(한국·대한민국) 비율",
-                          "% (95% 부트스트랩 CI)", "fig1_남측지칭_국가명",
-                          "KBS: 층1 제도 발화, 인용 제외 · 유튜브: '남조선' 제외(북한 시절 발화 재현) · 2018 유튜브는 공백"))
+    out.append(fig_bar_ci(T["지칭어_국가명"], "남한을 부르는 말 중 '한국·대한민국'의 비율",
+                          "% (가로선 = 95% 신뢰구간)", "fig1_남측지칭_국가명",
+                          "KBS: 앵커·리포터·기자의 말(인용 제외) · 유튜브: 북한 시절 말을 옮긴 '남조선' 제외 · 2018년 유튜브는 비교하지 않음"))
     k = T["김정은호칭"]; kk = k[(k.매체 == "KBS") & (k.버전 == "인용 제외")]
     rows = [dict(집단=f"KBS {r.연도}", val=r.직함, lo=num(r.직함CI)[0], hi=num(r.직함CI)[1], N=r.N)
             for r in kk.itertuples()]
@@ -175,8 +181,8 @@ def figures(T):
     for yi, v, n in zip(y, kd.val, kd.N):
         ax.text(102, yi, f"{v:.1f}%  (N={int(n):,})", va="center", color=INK, fontsize=9)
     ax.set_yticks(y, kd.집단); ax.set_xlim(0, 125); ax.set_xticks(range(0, 101, 20)); style(ax)
-    ax.set_xlabel("% (95% CI; 탈북민 인용은 N<20으로 CI 미표시)")
-    ax.set_title("김정은 언급 중 직함(위원장·총비서 등) 부착 비율", loc="left", color=INK, fontsize=12, fontweight="bold")
+    ax.set_xlabel("% (가로선 = 95% 신뢰구간; 탈북민 인용은 사례가 적어 생략)")
+    ax.set_title("'김정은'에 직함(위원장·총비서 등)을 붙인 비율", loc="left", color=INK, fontsize=12, fontweight="bold")
     out.append(save(fig, "fig2_김정은_직함부착"))
 
     # 토픽 K=6 100% 누적
@@ -187,55 +193,58 @@ def figures(T):
     left = np.zeros(3); yy = np.arange(3)[::-1]
     for i, t in enumerate(tp.index):
         v = tp.loc[t].values
-        ax.barh(yy, v, left=left, height=0.55, color=CAT[i], edgecolor=SURF, linewidth=2, label=f"{t} {lab[t]}")
+        ax.barh(yy, v, left=left, height=0.55, color=CAT[i], edgecolor=SURF, linewidth=2, label=lab[t])
         for yi, l, w in zip(yy, left, v):
             if w >= 8:
                 ax.text(l + w / 2, yi, f"{w:.0f}", ha="center", va="center", fontsize=9,
                         color="#0b0b0b" if CAT[i] == "#eda100" else "#ffffff")
         left += v
-    ax.set_yticks(yy, groups); ax.set_xlim(0, 100); ax.set_xlabel("평균 토픽 비중 (%)"); style(ax)
+    ax.set_yticks(yy, groups); ax.set_xlim(0, 100); ax.set_xlabel("평균 주제 비중 (%)"); style(ax)
     ax.legend(loc="upper left", bbox_to_anchor=(0, -0.28), ncol=2, frameon=False, fontsize=8.5)
-    ax.set_title("합동 LDA(K=6) 토픽 구성 — 2024", loc="left", color=INK, fontsize=12, fontweight="bold")
+    ax.set_title("2024년 주제 구성 (KBS와 유튜브를 함께 6개 주제로 나눔)", loc="left", color=INK, fontsize=12, fontweight="bold")
     out.append(save(fig, "fig3_토픽K6_구성"))
 
     # K 선택 — 척도가 달라 두 패널
     ks = T["토픽_K선택"]
     fig, axs = plt.subplots(1, 2, figsize=(8.6, 3))
-    for ax, col, ttl in [(axs[0], "UMass원본", "UMass 응집도 (높을수록 좋음)"), (axs[1], "안정성평균", "시드 안정성 (1=완전 재현)")]:
+    for ax, col, ttl in [(axs[0], "UMass원본", "주제 안 단어들의 일관성 (높을수록 좋음)"),
+                         (axs[1], "안정성평균", "반복 계산 시 같은 주제가 나오는 정도 (1 = 항상 같음)")]:
         ax.plot(ks.K, ks[col], color=CAT[0], linewidth=2, marker="o", markersize=7)
         best = ks.loc[ks[col].idxmax()]
-        ax.annotate(f"K={int(best.K)}: {best[col]:.3f}", (best.K, best[col]), xytext=(8, -14),
+        ax.annotate(f"{int(best.K)}개: {best[col]:.3f}", (best.K, best[col]), xytext=(8, -14),
                     textcoords="offset points", color=INK, fontsize=9)
-        ax.set_xticks(ks.K); ax.set_xlabel("K"); ax.set_title(ttl, loc="left", color=INK, fontsize=10); style(ax, "y")
-    fig.suptitle("합동 LDA 토픽 수(K) 선택 근거", x=0.01, ha="left", color=INK, fontsize=12, fontweight="bold")
+        ax.set_xticks(ks.K); ax.set_xlabel("주제 수"); ax.set_title(ttl, loc="left", color=INK, fontsize=10); style(ax, "y")
+    fig.suptitle("주제 수를 6개로 정한 근거", x=0.01, ha="left", color=INK, fontsize=12, fontweight="bold")
     fig.tight_layout(); out.append(save(fig, "fig4_토픽_K선택"))
 
     # 헤지 — 소재별 작은 다중
     h = T["헤지_소재"]; yrs = ["2018", "2020", "2022", "2024"]
     fig, axs = plt.subplots(1, 2, figsize=(8.6, 3.2), sharey=True)
+    NAME = {"내부(검증곤란)": "북한 내부 소식 코너", "정세(관측가능)": "정세 분석 코너",
+            "출처불명시형": "출처 없는 전언", "화자추정형": "화자의 추정"}
     for ax, grp in zip(axs, ["내부(검증곤란)", "정세(관측가능)"]):
         for i, typ in enumerate(["출처불명시형", "화자추정형"]):
             r = h[(h.구분 == grp) & (h.지표 == typ)].iloc[0]
             v = [num(r[y]) for y in yrs]
             x = [int(y) for y in yrs]
-            ax.plot(x, [a[0] for a in v], color=CAT[i], linewidth=2, marker="o", markersize=7, label=typ)
+            ax.plot(x, [a[0] for a in v], color=CAT[i], linewidth=2, marker="o", markersize=7, label=NAME[typ])
             ax.fill_between(x, [a[1] for a in v], [a[2] for a in v], color=CAT[i], alpha=0.12, linewidth=0)
-            ax.text(2024.3, v[-1][0], f"{typ} {v[-1][0]:.1f}", color=INK2, fontsize=8, va="center")
+            ax.text(2024.3, v[-1][0], f"{NAME[typ]} {v[-1][0]:.1f}", color=INK2, fontsize=8, va="center")
             z = r.CA_Z
         ax.set_xticks([int(y) for y in yrs]); ax.set_xlim(2017.5, 2027.5); style(ax, "y")
-        ax.set_title(grp, loc="left", color=INK, fontsize=10)
-    axs[0].set_ylabel("리포트 나레이션 문장 중 %")
+        ax.set_title(NAME[grp], loc="left", color=INK, fontsize=10)
+    axs[0].set_ylabel("리포터 문장 중 %")
     axs[0].legend(frameon=False, fontsize=8, loc="upper left")
-    fig.suptitle("KBS 헤지 표현 유형별 비율 (인용 제외, 음영=95% CI)", x=0.01, ha="left", color=INK, fontsize=12,
+    fig.suptitle("KBS 추정·전언 표현의 비율 (인용 제외, 옅은 띠 = 95% 신뢰구간)", x=0.01, ha="left", color=INK, fontsize=12,
                  fontweight="bold")
     fig.tight_layout(); out.append(save(fig, "fig5_KBS헤지_유형"))
 
     # 극성 — 두 지표 두 패널, 모델 2계열
     pol = T["극성"]; corp = list(dict.fromkeys(pol.코퍼스))
     fig, axs = plt.subplots(1, 2, figsize=(8.6, 3.4))
-    for ax, col, ttl in [(axs[0], "분산", "극성 점수 분산"), (axs[1], "강한부정", "강한 부정 문장 비율 (%)")]:
+    for ax, col, ttl in [(axs[0], "분산", "점수의 흩어짐"), (axs[1], "강한부정", "강한 부정 문장 비율 (%)")]:
         w = 0.36; x = np.arange(len(corp))
-        for i, (m, mname) in enumerate([("koelectra", "KoELECTRA"), ("mbert", "mBERT")]):
+        for i, (m, mname) in enumerate([("koelectra", "모델 1 (KoELECTRA)"), ("mbert", "모델 2 (다국어 BERT)")]):
             v = [num(pol[(pol.모델 == m) & (pol.코퍼스 == c)][col].iloc[0]) for c in corp]
             ax.bar(x + (i - 0.5) * w, [a[0] for a in v], width=w, color=CAT[i], edgecolor=SURF, linewidth=2, label=mname)
             ax.errorbar(x + (i - 0.5) * w, [a[0] for a in v], yerr=[[a[0] - a[1] for a in v], [a[2] - a[0] for a in v]],
@@ -243,7 +252,7 @@ def figures(T):
         ax.set_xticks(x, [c.replace("유튜브 ", "유튜브\n") for c in corp], fontsize=8)
         ax.set_title(ttl, loc="left", color=INK, fontsize=10); style(ax, "y")
     axs[0].legend(frameon=False, fontsize=8)
-    fig.suptitle("극성 보조 지표 (문장 단위, 문서 부트스트랩 95% CI)", x=0.01, ha="left", color=INK, fontsize=12,
+    fig.suptitle("긍정·부정 점수 (보조 자료, 세로선 = 95% 신뢰구간)", x=0.01, ha="left", color=INK, fontsize=12,
                  fontweight="bold")
     fig.tight_layout(); out.append(save(fig, "fig6_극성_분산_강한부정"))
 
@@ -256,23 +265,23 @@ def figures(T):
         top = list(sizes.index[:6])
         col = {n: (CAT[top.index(c)] if c in top else OTHER) for n, c in comm.items()}
         freq = nx.get_node_attributes(G, "freq")
-        pos = nx.spring_layout(G, weight="weight", seed=42, k=0.6)
-        fig, ax = plt.subplots(figsize=(8, 7))
+        pos = nx.kamada_kawai_layout(G, weight=None)          # 노드 겹침이 적은 배치
+        fig, ax = plt.subplots(figsize=(9, 8))
         nx.draw_networkx_edges(G, pos, ax=ax, edge_color=GRID, width=0.6)
         fv = np.array([float(freq[n]) for n in G])
         nx.draw_networkx_nodes(G, pos, ax=ax, node_color=[col[n] for n in G],
                                node_size=40 + 600 * (fv / fv.max()) ** 0.6, edgecolors=SURF, linewidths=1.5)
-        lab_nodes = sorted(G, key=lambda n: -float(freq[n]))[:45]
+        lab_nodes = sorted(G, key=lambda n: -float(freq[n]))[:30]
         nx.draw_networkx_labels(G, {n: pos[n] for n in lab_nodes}, {n: n for n in lab_nodes}, ax=ax,
-                                font_family=FONT, font_size=8, font_color=INK)
+                                font_family=FONT, font_size=8, font_color=INK,
+                                bbox=dict(boxstyle="round,pad=0.15", fc=SURF, ec="none", alpha=0.85))
         ax.set_axis_off()
-        ax.set_title(f"연관어 네트워크 — {name}  (노드 {G.number_of_nodes()} · 간선 {G.number_of_edges()}; "
-                     f"색=커뮤니티 상위 6, 회색=기타)", loc="left", color=INK, fontsize=11, fontweight="bold")
+        ax.set_title(f"연관어 연결망 — {name}\n(원 크기 = 많이 쓰인 정도, 선 = 같은 문장에 자주 함께 나옴, 색 = 함께 묶이는 단어 무리)", loc="left", color=INK, fontsize=11, fontweight="bold")
         out.append(save(fig, f"fig7_연관어네트워크_{name.replace(' ', '_')}"))
 
     if "LLM분류_소재분포" in T:
-        for key, fname, ttl in [("LLM분류_소재분포", "fig8_LLM_소재분포", "LLM 분류 — 소재 구성 (bundle 포함 전체 문서)"),
-                                ("LLM분류_프레임분포", "fig9_LLM_프레임분포", "LLM 분류 — 프레임 구성 (bundle 포함 전체 문서; 보고서 7.10 KBS 열은 bundle 제외)")]:
+        for key, fname, ttl in [("LLM분류_소재분포", "fig8_LLM_소재분포", "AI 분류 — 소재 구성 (잠정, 사람 검수 전)"),
+                                ("LLM분류_프레임분포", "fig9_LLM_프레임분포", "AI 분류 — 프레임 구성 (잠정, 사람 검수 전)")]:
             d = T[key].set_index(T[key].columns[0])
             cols = [c for c in ["KBS 2018", "KBS 2020", "KBS 2022", "KBS 2024", "유튜브 생활·경험형", "유튜브 정세·체제형"]
                     if c in d]
@@ -378,62 +387,91 @@ CODEBOOK = {
 def main():
     if PKG.exists():
         shutil.rmtree(PKG)        # 이 스크립트가 만든 산출물 폴더(원본 아님) — 매번 새로 생성
-    for d in ["01_보고서", "03_CSV", "04_그림", "05_네트워크_Gephi", "06_방법론_재현", "07_표본목록"]:
-        (PKG / d).mkdir(parents=True)
+    A = {k: APX / v for k, v in dict(csv="표_CSV", net="연결망_Gephi", meth="방법·단어목록", lst="기사·영상_목록",
+                                      rep="상세_보고서", md="문서_원본(md)").items()}
+    for d in [FIG, *A.values()]:
+        d.mkdir(parents=True)
     T = tables()
     for k, v in T.items():
-        v.to_csv(PKG / "03_CSV" / f"{k}.csv", index=False, encoding="utf-8-sig")
-    write_xlsx(T, PKG / "02_분석결과_통합.xlsx")
+        v.to_csv(A["csv"] / f"{k}.csv", index=False, encoding="utf-8-sig")
+    write_xlsx(T, APX / "분석결과_전체표(기술용).xlsx")
     figs = figures(T)
 
-    for f in ["데이터수집_보고서.md", "유튜브_분석_요약.md", "토픽모델링_보고서.docx"]:
-        if (R / f).exists():
-            shutil.copy(R / f, PKG / "01_보고서" / f)
-    for f in ["데이터수집_보고서.md", "유튜브_분석_요약.md"]:
-        md_to_docx(R / f, PKG / "01_보고서" / f.replace(".md", ".docx"))
-    # 본 보고서: 패키지 맨 앞, 그림 내장 docx
-    shutil.copy(R / "통일연구원_결과보고서.md", PKG / "00_결과보고서.md")
+    # ---- 읽을 자료 (패키지 맨 앞)
     md_to_docx(R / "통일연구원_결과보고서.md", PKG / "00_결과보고서.docx", base_dir=PKG)
     import results_digest                                  # 결과표 모음 (KBS 2018·2024 / 유튜브 2024 / 비교)
     dmd, nsheet = results_digest.main(PKG)
     md_to_docx(dmd, dmd.with_suffix(".docx"))
+    shutil.move(str(dmd), A["md"] / dmd.name)
+    shutil.copy(R / "통일연구원_결과보고서.md", A["md"] / "00_결과보고서.md")
+    guide = APX.parent / "_안내.md"
+    guide.write_text(GUIDE.format(date=TODAY, nfig=len(figs), ntab=nsheet), encoding="utf-8")
+    md_to_docx(guide, PKG / "00_먼저_읽어주세요.docx")
+    shutil.move(str(guide), A["md"] / "00_먼저_읽어주세요.md")
+
+    # ---- 부록 (연구 재현용)
+    for f in ["데이터수집_보고서.md", "유튜브_분석_요약.md", "토픽모델링_보고서.docx"]:
+        if (R / f).exists():
+            shutil.copy(R / f, A["rep"] / f)
+    for f in ["데이터수집_보고서.md", "유튜브_분석_요약.md"]:
+        md_to_docx(R / f, A["rep"] / f.replace(".md", ".docx"))
     for g in YT.glob("cooc_net_*.gexf"):
-        shutil.copy(g, PKG / "05_네트워크_Gephi" / g.name)
+        shutil.copy(g, A["net"] / g.name)
     for src in [R / "kbs" / "referent_lexicon.yaml", R / "kbs" / "reporting_verbs.yaml",
                 R / "youtube" / "referent_lexicon_yt.yaml", R / "youtube" / "referent_lexicon_north.yaml", R / "kiwi_user_dict.tsv",
                 R / "kiwi_user_dict_v3_draft.tsv", R / "asr_normalize_v1.tsv", R / "llm_classify" / "prompt_v1.md"]:
         if src.exists():
-            shutil.copy(src, PKG / "06_방법론_재현" / src.name)
+            shutil.copy(src, A["meth"] / src.name)
 
     v = pd.read_parquet(R / "youtube" / "master" / "videos.parquet")
-    v[["video_id", "channel", "genre", "playlist", "upload_date", "title", "url", "char_len", "token_len", "n_sents"]] \
-        .to_csv(PKG / "07_표본목록" / "유튜브_영상목록.csv", index=False, encoding="utf-8-sig")
-    art = pd.read_parquet(KB / "articles.parquet")[["ncd", "year", "date", "char_len", "token_len"]]
+    v = v[["channel", "genre", "upload_date", "title", "url", "char_len"]].rename(columns={
+        "channel": "채널", "genre": "유형", "upload_date": "업로드일", "title": "제목", "url": "주소", "char_len": "자막 글자 수"})
+    v.to_excel(A["lst"] / "유튜브_영상목록.xlsx", index=False)
+    art = pd.read_parquet(KB / "articles.parquet")[["ncd", "year", "date", "char_len"]]
     files = {2018: "kbs_namnam_2018_final.csv", 2020: "kbs_namnam_2020.csv", 2022: "kbs_namnam_2022.csv",
              2024: "kbs_namnam_2024.csv"}
     meta = pd.concat([pd.read_csv(R / "kbs" / f, usecols=["ncd", "list_title", "url"]) for f in files.values()]) \
         .groupby("ncd").first().reset_index()
-    art.merge(meta, on="ncd", how="left").to_csv(PKG / "07_표본목록" / "KBS_기사목록.csv", index=False, encoding="utf-8-sig")
+    art.merge(meta, on="ncd", how="left")[["year", "date", "list_title", "url", "char_len"]].rename(columns={
+        "year": "연도", "date": "방송일", "list_title": "코너·제목", "url": "주소", "char_len": "글자 수"}) \
+        .to_excel(A["lst"] / "KBS_기사목록.xlsx", index=False)
 
-    # 코드북 · 재현 가이드
-    cb = ["# 코드북 — 표(CSV·엑셀 시트) 설명\n", "| 표 | 설명 | 열 |", "|---|---|---|"]
+    cb = ["# 코드북 — 부록 표(CSV·엑셀 시트) 설명\n", "| 표 | 설명 | 열 |", "|---|---|---|"]
     for k, df in T.items():
         cb.append(f"| {k} | {CODEBOOK.get(k, '')} | {', '.join(map(str, df.columns))} |")
-    (PKG / "06_방법론_재현" / "코드북.md").write_text("\n".join(cb) + "\n", encoding="utf-8")
-    (PKG / "06_방법론_재현" / "재현가이드.md").write_text(REPRO, encoding="utf-8")
+    (A["meth"] / "코드북.md").write_text("\n".join(cb) + "\n", encoding="utf-8")
+    (A["meth"] / "재현가이드.md").write_text(REPRO, encoding="utf-8")
 
-    # HTML 한 장 요약 (그림 내장 + 핵심 표)
     imgs = "".join(f'<figure><img src="data:image/png;base64,{base64.b64encode(p.read_bytes()).decode()}" '
                    f'alt="{p.stem}"><figcaption>{p.stem}</figcaption></figure>' for p in figs)
-    key_tabs = "".join(f"<h3>{k}</h3>{T[k].head(40).to_html(index=False, border=0)}" for k in
-                       ["지칭어_국가명", "김정은호칭", "토픽K6_라벨지표", "헤지_소재", "극성"] +
-                       (["LLM분류_소재분포", "LLM분류_프레임분포"] if "LLM분류_소재분포" in T else []))
-    (PKG / "08_한눈에보기.html").write_text(HTML.format(date=TODAY, imgs=imgs, tabs=key_tabs), encoding="utf-8")
-    (PKG / "00_README.md").write_text(README.format(date=TODAY, nfig=len(figs), ntab=len(T),
-                                                    llm="포함" if "LLM분류_문서별" in T else "미포함(배치 처리 중)"),
-                                      encoding="utf-8")
+    (APX / "그림_한눈에보기.html").write_text(HTML.format(date=TODAY, imgs=imgs, tabs=""), encoding="utf-8")
     shutil.make_archive(str(PKG), "zip", PKG.parent, PKG.name)
-    print(f"패키지: {PKG}  (+ .zip) · 표 {len(T)} · 그림 {len(figs)}")
+    print(f"패키지: {PKG}  (+ .zip) · 결과표 {nsheet} · 그림 {len(figs)}")
+
+
+GUIDE = """# 통일연구원 전달 자료 안내
+
+N.K.STATS 연구그룹 · {date}
+
+KBS 〈남북의 창〉(2018·2020·2022·2024년)과 탈북민·북한 유튜브(2024년, 6개 채널 592편)의 북한 관련 담론을 분석한 결과입니다.
+**결과에 대한 해석은 담지 않았습니다.** 각 수치가 무엇을 어떻게 센 것인지만 설명했습니다.
+
+## 읽는 순서
+
+1. **00_결과보고서.docx** — 연구 설계, 자료, 방법, 결과, 한계를 정리한 본 보고서입니다. 맨 앞에 '용어 풀이와 표 읽는 법'이 있습니다.
+2. **01_결과표 (Word 또는 Excel)** — 결과 표 {ntab}개를 KBS 2018·2024년 / 유튜브 2024년 / 2024년 비교 순서로 모았습니다. 내용은 Word와 Excel이 같습니다. 표를 다시 가공하실 때는 Excel 파일을 쓰십시오.
+3. **02_그림** — 보고서에 쓴 그림을 포함해 {nfig}개입니다.
+
+**'부록_기술자료' 폴더는 연구를 다시 계산해 볼 때 쓰는 자료**(계산 결과 원본, 단어 목록, 프로그램 설정 등)입니다. 읽지 않으셔도 됩니다.
+다만 그 안의 '기사·영상_목록'에는 분석한 KBS 기사와 유튜브 영상의 제목과 주소가 있어, 원문을 직접 확인하실 때 쓸 수 있습니다.
+
+## 함께 알아 두실 점
+
+- 2018년 유튜브는 대상 채널 대부분이 2019년 이후 개설되어 비교하지 않았습니다. KBS와 유튜브 비교는 2024년만 했습니다.
+- 유튜브 자막은 유튜브가 음성 인식으로 자동 생성한 것이라 받아쓰기 오류가 있을 수 있습니다.
+- 'AI 분류'(기사·영상의 소재와 프레임) 결과는 사람이 맞는지 확인하기 전의 잠정치입니다. 프레임 범주도 아직 확정 전 초안입니다.
+- 방송 대본과 자막 원문은 저작권 문제로 보내지 않습니다.
+"""
 
 
 README = """# 통일연구원 전달 자료 — N.K.STATS ({date})
