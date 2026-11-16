@@ -296,9 +296,9 @@ def figures(T):
 
 
 # ---------------------------------------------------------------- 문서
-def md_to_docx(md_path, docx_path):
+def md_to_docx(md_path, docx_path, base_dir=None):
     from docx import Document
-    from docx.shared import Pt
+    from docx.shared import Cm, Pt
     doc = Document()
     st = doc.styles["Normal"]; st.font.name = "Noto Sans CJK KR"; st.font.size = Pt(10)
     lines = md_path.read_text(encoding="utf-8").splitlines()
@@ -316,6 +316,12 @@ def md_to_docx(md_path, docx_path):
                     t.cell(ri, ci).text = c
             continue
         txt = re.sub(r"\*\*(.+?)\*\*", r"\1", l).replace("`", "")
+        img = re.match(r"^!\[(.*?)\]\((.+?)\)", l.strip())
+        if img and base_dir is not None and (base_dir / img.group(2)).exists():
+            doc.add_picture(str(base_dir / img.group(2)), width=Cm(16))
+            cap = doc.add_paragraph(img.group(1)); cap.runs[0].font.size = Pt(8)
+            i += 1
+            continue
         if l.startswith("#"):
             lvl = len(l) - len(l.lstrip("#")); doc.add_heading(txt.lstrip("# "), level=min(lvl, 4))
         elif re.match(r"^\s*[-*] ", l):
@@ -385,6 +391,9 @@ def main():
             shutil.copy(R / f, PKG / "01_보고서" / f)
     for f in ["데이터수집_보고서.md", "유튜브_분석_요약.md"]:
         md_to_docx(R / f, PKG / "01_보고서" / f.replace(".md", ".docx"))
+    # 본 보고서: 패키지 맨 앞, 그림 내장 docx
+    shutil.copy(R / "통일연구원_결과보고서.md", PKG / "00_결과보고서.md")
+    md_to_docx(R / "통일연구원_결과보고서.md", PKG / "00_결과보고서.docx", base_dir=PKG)
     for g in YT.glob("cooc_net_*.gexf"):
         shutil.copy(g, PKG / "05_네트워크_Gephi" / g.name)
     for src in [R / "kbs" / "referent_lexicon.yaml", R / "kbs" / "reporting_verbs.yaml",
@@ -431,6 +440,7 @@ KBS 〈남북의 창〉(2018·2020·2022·2024)과 탈북민·북한 유튜브(2
 
 | 폴더/파일 | 내용 |
 |---|---|
+| **00_결과보고서.docx / .md** | **본 보고서** — 설계·자료·방법·결과·한계 (그림 포함, 해석 미수록) |
 | 01_보고서/ | 데이터수집_보고서(md·docx) — 수집·정제·분석 전 과정, 유튜브_분석_요약(md·docx), 토픽모델링_보고서.docx |
 | 02_분석결과_통합.xlsx | 모든 결과 표 {ntab}개 시트 (첫 시트 '목차') |
 | 03_CSV/ | 같은 표의 CSV (UTF-8 BOM, 엑셀에서 바로 열림) |
